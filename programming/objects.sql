@@ -1,195 +1,199 @@
---jezyk polski--
+--english lang--
 
-SET LANGUAGE 'polski'
+SET LANGUAGE 'english'
 
----polecenia drop---
-DROP FUNCTION udf_przedmioty_wybranego_uzytkownika;
-DROP FUNCTION udf_opcje_dostawy_dla_wybranego_przedmiotu;
-DROP VIEW Oferty_numeracja;
+---drop commands---
+DROP FUNCTION IF EXISTS udf_items_of_selected_user;
+DROP FUNCTION IF EXISTS udf_delivery_options_for_selected_item;
+DROP VIEW IF EXISTS Offers_with_numeration;
 
-DROP PROCEDURE usp_nowy_uzytkownik;
-DROP PROCEDURE usp_wystawienie_przedmiotu_i_licytacja;
-DROP PROCEDURE usp_dodanie_oferty;
-DROP PROCEDURE usp_zakoncz_licytacje;
+DROP PROCEDURE IF EXISTS usp_new_user;
+DROP PROCEDURE IF EXISTS usp_new_user_extended;
+DROP PROCEDURE IF EXISTS usp_auction_item;
+DROP PROCEDURE IF EXISTS usp_add_bid;
+DROP PROCEDURE IF EXISTS usp_finish_auction;
 
---polecenia create--
---trzeba dodać jeszcze kilka triggerow--
+GO
 
-CREATE OR ALTER PROCEDURE usp_nowy_uzytkownik
+--create commands--
+
+CREATE OR ALTER PROCEDURE usp_new_user
     @login VARCHAR(32),
-    @imie VARCHAR(20),
-    @nazwisko VARCHAR(25),
-    @adres_zam VARCHAR(50),
+    @first_name VARCHAR(20),
+    @last_name VARCHAR(25),
+    @address VARCHAR(50),
     @email VARCHAR (40)
 AS
 
-    INSERT INTO U�ytkownicy (login, imie, nazwisko, adres_zam, email)
-    VALUES (@login, @imie, @nazwisko, @adres_zam, @email);
+    INSERT INTO Users (login, first_name, last_name, address, email)
+    VALUES (@login, @first_name, @last_name, @address, @email);
 GO
 
 
-CREATE OR ALTER PROCEDURE usp_nowy_uzytkownik_rozsz
+CREATE OR ALTER PROCEDURE usp_new_user_extended
     @login VARCHAR(32),
-    @imie VARCHAR(20),
-    @nazwisko VARCHAR(25),
-    @adres_zam VARCHAR(50),
+    @first_name VARCHAR(20),
+    @last_name VARCHAR(25),
+    @address VARCHAR(50),
     @email VARCHAR (40),
-    @numer_konta CHAR(26),
-    @adres_dos VARCHAR(50),
-    @telefon CHAR(9)
+    @account_number CHAR(26),
+    @delivery_address VARCHAR(50),
+    @phone_number CHAR(9)
 AS
 
-    INSERT INTO U�ytkownicy (login, imie, nazwisko, adres_zam, email, numer_konta, adres_dos, telefon)
-    VALUES (@login, @imie, @nazwisko, @adres_zam, @email, @numer_konta, @adres_dos, @telefon);
+    INSERT INTO Users (login, first_name, last_name, address, email, account_number, delivery_address, phone_number)
+    VALUES (@login, @first_name, @last_name, @address, @email, @account_number, @delivery_address, @phone_number);
 GO
 
 
-CREATE OR ALTER PROCEDURE usp_wystawienie_przedmiotu_i_licytacja
-    @nazwa VARCHAR(30),
-    @kategoria VARCHAR(30),
-    @cena_wyjsc MONEY,
-    @wlasciciel VARCHAR(32)
+CREATE OR ALTER PROCEDURE usp_auction_item
+    @name VARCHAR(30),
+    @category VARCHAR(30),
+    @entry_price MONEY,
+    @owner VARCHAR(32)
 AS
-    IF NOT EXISTS (SELECT login FROM U�ytkownicy)
+    IF NOT EXISTS (SELECT login FROM Users WHERE login = @owner)
     BEGIN
-        RAISERROR(N'Nie ma takiego u�ytkownika', 16, 1);
+        RAISERROR(N'No such user exists', 16, 1);
         RETURN;
     END;
 
-    INSERT INTO Przedmioty (nazwa, kategoria, cena_wyjsc, wlasciciel)
-    VALUES(@nazwa, @kategoria, @cena_wyjsc, @wlasciciel)
+    INSERT INTO Items (name, category, entry_price, owner)
+    VALUES(@name, @category, @entry_price, @owner);
 
     DECLARE @status VARCHAR(30);
-    SET @status = 'w trakcie';
+    SET @status = 'in progress';
 
-    DECLARE @przedmiot INT;
-    SET @przedmiot = (SELECT MAX(numer)
-                      FROM Przedmioty);
+    DECLARE @item INT;
+    SET @item = (SELECT MAX(id)
+                 FROM Items);
 
-    DECLARE @data_rozp DATE;
-    SET @data_rozp = GETDATE();
+    DECLARE @start_date DATE;
+    SET @start_date = GETDATE();
 
-    INSERT INTO Licytacje (przedmiot, data_rozp, status)
-    VALUES(@przedmiot, @data_rozp, @status);
+    INSERT INTO Auctions (item, start_date, status)
+    VALUES(@item, @start_date, @status);
 
 GO
 
 
-CREATE OR ALTER PROCEDURE usp_dodanie_oferty
-    @kwota MONEY,
-    @numer_licytacji INT,
-    @uzytkownik VARCHAR(32)
+CREATE OR ALTER PROCEDURE usp_add_bid
+    @amount MONEY,
+    @auction_number INT,
+    @username VARCHAR(32)
 AS
-     IF NOT EXISTS (SELECT login FROM U�ytkownicy)
+     IF NOT EXISTS (SELECT login FROM Users WHERE login = @username)
     BEGIN
-        RAISERROR(N'Nie ma takiego u�ytkownika', 16, 1 );
+        RAISERROR(N'No such user exists', 16, 1 );
         RETURN;
     END
 
-     IF NOT EXISTS (SELECT id FROM Licytacje)
+     IF NOT EXISTS (SELECT id FROM Auctions WHERE id = @auction_number)
     BEGIN
-        RAISERROR(N'Licytacja o tym numerze nie istnieje', 
+        RAISERROR(N'No auction with this number exists', 
                    16, 
                    1);
         RETURN;
     END;
 
-    DECLARE @data_of DATE;
-    SET @data_of = GETDATE();
+    DECLARE @bid_date DATE;
+    SET @bid_date = GETDATE();
 
-    DECLARE @godzina TIME(0);
-    SET @godzina = (SELECT convert(varchar(10), GETDATE(), 108));
+    DECLARE @bid_hour TIME(0);
+    SET @bid_hour = (SELECT convert(varchar(10), GETDATE(), 108));
 
-    INSERT INTO Oferty VALUES
-    (@data_of, @godzina, @kwota, @numer_licytacji, @uzytkownik);
+    INSERT INTO Bids VALUES
+    (@bid_date, @bid_hour, @amount, @auction_number, @username);
 
 GO
 
 
-CREATE OR ALTER PROCEDURE usp_zakoncz_licytacje
-    @numer_licytacji INT,
+CREATE OR ALTER PROCEDURE usp_finish_auction
+    @auction_number INT,
     @status VARCHAR(30)
 AS
-    DECLARE @pomocnicza MONEY;
-    DECLARE @zwyciezca VARCHAR(32);
+    DECLARE @highest_bid MONEY;
+    DECLARE @winner VARCHAR(32);
 
-    IF @status = 'zako�czona bez kupna'
+    IF @status = 'finished without buying'
         BEGIN 
-            UPDATE Licytacje
-            SET data_zakon = GETDATE(),
+            UPDATE Auctions
+            SET end_date = GETDATE(),
                 status = @status
-            WHERE id = @numer_licytacji;
+            WHERE id = @auction_number;
         END
-    ELSE IF @status = 'zako�czona kupnem'
+    ELSE IF @status = 'finished with buying'
         BEGIN
-            SET @pomocnicza = (SELECT MAX(kwota)
-                               FROM Oferty
-                               WHERE numer_licytacji = @numer_licytacji);
+            SET @highest_bid = (SELECT MAX(amount)
+                               FROM Bids
+                               WHERE auction_number = @auction_number);
 
-            SET @zwyciezca = (SELECT uzytkownik
-                              FROM OFERTY
-                              WHERE kwota = (SELECT MAX(kwota)
-                                             FROM Oferty
-                                             WHERE numer_licytacji = @numer_licytacji));
+            --possible shortcute for this one--
+            SET @winner = (SELECT username
+                              FROM Bids
+                              WHERE amount = (SELECT MAX(amount)
+                                               FROM Bids
+                                               WHERE auction_number = @auction_number));
 
-            DECLARE @data_zakon DATE;
-            SET @data_zakon = GETDATE();
+            DECLARE @end_date DATE;
+            SET @end_date = GETDATE();
 
-            UPDATE Licytacje
-            SET data_zakon = @data_zakon,
-                zwyciezca = @zwyciezca,
+            UPDATE Auctions
+            SET end_date = @end_date,
+                winner = @winner,
                 status = @status
-            WHERE id = @numer_licytacji;
+            WHERE id = @auction_number;
 
-            UPDATE Przedmioty
-            SET Przedmioty.cena_zak = @pomocnicza
-            FROM Przedmioty
-                JOIN Licytacje
-                    ON Przedmioty.numer = Licytacje.przedmiot
-            WHERE Licytacje.id = @numer_licytacji;
+            UPDATE Items
+            SET Items.exit_price = @highest_bid
+            FROM Items
+                JOIN Auctions
+                    ON Items.id = Auctions.item
+            WHERE Auctions.id = @auction_number;
         END
     ELSE
         BEGIN
-            RAISERROR(N'�le wprowadzony status',17,1)
+            RAISERROR(N'Incorrectly entered status',17,1)
             RETURN;
         END;
 GO
 
 
-CREATE FUNCTION udf_przedmioty_wybranego_uzytkownika
+CREATE FUNCTION udf_items_of_selected_user
 (
     @login VARCHAR(32)
 )
     RETURNS TABLE
 AS
     RETURN SELECT *
-           FROM Przedmioty
-           WHERE wlasciciel = @login;
+           FROM Items
+           WHERE owner = @login;
 GO
 
 
-CREATE FUNCTION udf_opcje_dostawy_dla_wybranego_przedmiotu
+CREATE FUNCTION udf_delivery_options_for_selected_item
 (
-    @numer  INT
+    @number  INT
 )
     RETURNS TABLE
 AS
-    RETURN SELECT Dostawy.id, Dostawy.nazwa, Dostawy.firma, Dostawy.cena
-           FROM Dostawy
-                JOIN Posiadanie
-                    ON Posiadanie.numer_dostawy = Dostawy.id
-           WHERE Posiadanie.przedmiot = @numer;
+    RETURN SELECT Deliveries.id, Deliveries.service_name, Deliveries.company, Deliveries.price
+           FROM Deliveries
+                JOIN Possession
+                    ON Possession.delivery_number = Deliveries.id
+           WHERE Possession.item = @number;
 GO
 
 
-CREATE VIEW Oferty_numeracja( data_of, numer_licytacji, godzina, uzytkownik)
+CREATE VIEW Offers_with_numeration(number, auction_number, bid_date, bid_hour, username)
 AS
 (
     SELECT
-    ROW_NUMBER() OVER(PARTITION BY numer_licytacji ORDER BY numer_licytacji) AS numer,
-    numer_licytacji, 
-    godzina,
-    uzytkownik
-    FROM Oferty
+    ROW_NUMBER() OVER(PARTITION BY auction_number ORDER BY auction_number) AS number,
+    auction_number, 
+    bid_date,
+	bid_hour,
+    username
+    FROM Bids
 );
 GO

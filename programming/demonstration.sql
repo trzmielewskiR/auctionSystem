@@ -1,29 +1,30 @@
-EXEC usp_nowy_uzytkownik 'samik', 'Jan', 'Dobrasiewicz', 'Ko³o ul. Poznañska 6', 'samik451@gmail.com'
-EXEC usp_nowy_uzytkownik 'hytry', 'Henryk', 'Sienkiewicz', 'Tarnowo ul. Mas³owska 15/6', 'slawnypisarzonet.pl'
+EXEC usp_new_user 'samik', 'Jan', 'Dobrasiewicz', 'Koo ul. Poznaska 6', 'samik451@gmailsdaf.com'
+EXEC usp_new_user 'hytry', 'Henryk', 'Sienkiewicz', 'Tarnowo ul. Masowska 15/6', 'slawnypisarzonet.pl'
 
-SELECT * FROM U¿ytkownicy;
+SELECT * FROM Users
 
-EXEC usp_wystawienie_przedmiotu_i_licytacja 'komputer', 'elektronika', '780', 'helo'
-EXEC usp_wystawienie_przedmiotu_i_licytacja 'telefon', 'elektronika', '460', 'radtrz'
+EXEC usp_auction_item 'PC', 'computers', '780', 'alice_smith'
+EXEC usp_auction_item 'telephone', 'electronics', '460', 'bobross'
 
-SELECT * FROM Przedmioty;
+SELECT * FROM Items;
 
-EXEC usp_dodanie_oferty '130', '15' , 'samik'
-EXEC usp_dodanie_oferty '140', '15', 'popa'
-EXEC usp_dodanie_oferty '160', '15', 'samik'
+EXEC usp_add_bid '1000', '12', 'samik'
+EXEC usp_add_bid '1200', '12', 'maryjane'
+EXEC usp_add_bid '1400', '12', 'samik'
 
-SELECT * FROM Oferty;
+SELECT * FROM Auctions;
+SELECT * FROM Bids;
 
-EXEC usp_zakoncz_licytacje '15', 'zakoñczona bez kupnem'
+EXEC usp_finish_auction '12', 'finished without buying'
 
-SELECT * FROM Przedmioty;
-SELECT * FROM Licytacje;
+SELECT * FROM Items;
+SELECT * FROM Auctions;
 
 SELECT *
-FROM udf_przedmioty_wybranego_uzytkownika('popa')
+FROM udf_items_of_selected_user('samwilson')
 
 SELECT * 
-FROM udf_opcje_dostawy_dla_wybranego_przedmiotu(1)
+FROM udf_delivery_options_for_selected_item(1)
 
 SELECT *
-FROM Oferty_numeracja;
+FROM Offers_with_numeration;
