@@ -1,30 +1,29 @@
-Serwis aukcyjny
+Auction service
 
-Baza danych przechowuje informacje o użytkownikach systemu aukcyjnego. 
-Każdy użytkownik jest identyfikowany za pomocą loginu, posiada ponadto obowiązkowe atrybuty: imię i nazwisko, adres zamieszkania, adres e-mail, oraz 
-nieobowiązkowe: numer konta, adres dostawy, telefon. 
-Użytkownicy mogą, korzystając z systemu, wystawiać przedmioty. 
-Każdy przedmiot otrzymuje indywidualny numer, a ponadto musi mieć podaną nazwę, kategorię, cenę wyjściową. 
-Opcjonalny jest opis przedmiotu oraz cena zakupu.
-Każdy przedmiot jest wystawiany przez jednego użytkownika.
-W momencie wystawienia przedmiotu tworzona jest licytacja. 
-Dla każdej licytacji pamiętamy jej unikalne id, datę rozpoczęcia i zakończenia oraz status (w trakcie, zakończona kupnem, zakończona bez kupna). 
-Przedmiot musi być związany z przynajmniej jedną licytacją (ale może być wielokrotnie wystawiony na licytację); 
-każda licytacja dotyczy jednego przedmiotu. 
-W ramach licytacji mogą być składane oferty. 
-Pamiętana jest data i godzina każdej oferty w ramach licytacji oraz kwota.
-Każda oferta składana jest przez jednego użytkownika. 
-Użytkownik może złożyć wiele ofert w ramach licytacji. 
-W bazie chcemy pamiętać ewentualnego zwycięzcę licytacji, który kupuje przedmiot. 
-Dodatkowo, z każdym wystawionym przedmiotem związane są opcje dostawy. 
-W bazie przechowywana jest lista możliwych opcji dostawy, każda opisana przez unikalne id, nazwę, firmę realizującą dostawę, oraz cenę. 
-Każdy przedmiot musi mieć przypisaną przynajmniej jedną opcję dostawy. 
-Każda opcja dostawy może być związana z wieloma przedmiotami.
+The database stores information about the users of the auction system. 
+Each user is identified by a login, and also has mandatory attributes: name, home address, e-mail address, and 
+optional: account number, delivery address, telephone. 
+Users can, using the system, auction items. 
+Each item is given an individual number, and must have a name, category, starting price. 
+A description of the item and the purchase price are optional.
+Each item is listed by one user.
+When an item is listed, an auction is created. 
+For each auction, we remember its unique id, start and end date, and status (in progress, finished buying, finished without buying). 
+The item must be associated with at least one auction (but can be auctioned multiple times); 
+each auction is for one item. 
+Bids may be placed as part of an auction. 
+The date and time of each bid within the auction and the amount are remembered.
+Each bid is placed by one user. 
+A user can make multiple bids within an auction. 
+In the database, we want to remember the possible winner of the auction who buys the item. 
+In addition, delivery options are associated with each auctioned item.
+The database stores a list of possible delivery options, each described by a unique id, name, delivery company, and price. 
+Each item must have at least one delivery option associated with it. 
+Each delivery option can be associated with multiple items.
 
-
-Użytkownicy(login, imie, nazwisko, adres_zamieszkania, email, numer_konta, adres_dostawy, telefon)
-Przedmioty(numer, nazwa, kategoria, cena_wyjsciowa, opis, cena_zakupu, Użytkownicy_login)
-Licytacje(id,data_rozp, data_zakon, status, zwyciezca, Przedmioty_numer, Użytkownicy_login)
-Oferty(data, godzina, kwota, Użytkownicy_login, Licytacja_id)
-Dostawy(id, cena, firma, nazwa,)
-Posiadanie(Przedmioty_numer, Dostawy_id)
+Users(login, first name, last name, address_residence, email, account_number, address_delivery, phone)
+Items(number,name,category,exit_price,description,purchase_price,Users_login)
+Auctions(id,date_creation, date_order, status, winner, Items_number, Users_login)
+Bids(date, time, amount, Users_login, Bid_id)
+Supplies(id, price, company, name,)
+Possession(Items_number, Supplies_id)
