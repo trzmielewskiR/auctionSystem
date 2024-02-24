@@ -1,150 +1,161 @@
---jezyk polski--
+CREATE DATABASE AuctionSystem;
 
-SET LANGUAGE 'polski'
+USE AuctionSystem;
 
---polecenia drop--
+--english language--
 
-DROP TABLE IF EXISTS U¿ytkownicy;
-DROP TABLE IF EXISTS Przedmioty;
-DROP TABLE IF EXISTS Licytacje;
-DROP TABLE IF EXISTS Oferty;
-DROP TABLE IF EXISTS Dostawy;
-DROP TABLE IF EXISTS Posiadanie;
+SET LANGUAGE 'english'
 
---polecenia create--
+--drop commands--
 
-CREATE TABLE U¿ytkownicy
+DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS Items;
+DROP TABLE IF EXISTS Auctions;
+DROP TABLE IF EXISTS Bids;
+DROP TABLE IF EXISTS Deliveries;
+DROP TABLE IF EXISTS Possession;
+
+--create commands--
+
+CREATE TABLE Users
 (
-    login       VARCHAR(32) NOT NULL CONSTRAINT uz_login PRIMARY KEY,
-    imie        VARCHAR(20) NOT NULL,
-    nazwisko    VARCHAR(25) NOT NULL,
-    adres_zam   VARCHAR(50) NOT NULL,
-    email       VARCHAR(40) NOT NULL UNIQUE CONSTRAINT uz_email_pop CHECK (email LIKE '%_@_%_.__%'),
-    numer_konta CHAR(26) NULL CONSTRAINT uz_numer_konta_pop CHECK (numer_konta LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
-    adres_dos   VARCHAR(50) NULL,
-    telefon     CHAR(9) NULL CONSTRAINT uz_telefon_pop CHECK(telefon LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
+    login             VARCHAR(32) NOT NULL CONSTRAINT usr_login PRIMARY KEY,
+    first_name        VARCHAR(20) NOT NULL,
+    last_name         VARCHAR(25) NOT NULL,
+    address           VARCHAR(50) NOT NULL,
+    email             VARCHAR(40) NOT NULL UNIQUE CONSTRAINT usr_email_chk CHECK (email LIKE '%_@_%_.__%'),
+    account_number    CHAR(26) NULL CONSTRAINT usr_account_num_chk CHECK (account_number LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+    delivery_address  VARCHAR(50) NULL,
+    phone_number      CHAR(9) NULL CONSTRAINT usr_phone_number_chk CHECK(phone_number LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
 );
 
-CREATE TABLE Przedmioty
+CREATE TABLE Items
 (
-    numer       INT IDENTITY(1,1) NOT NULL CONSTRAINT prz_numer PRIMARY KEY,
-    nazwa       VARCHAR(40) NOT NULL,
-    kategoria   VARCHAR(30) NOT NULL,
-    cena_wyjsc  MONEY NOT NULL CONSTRAINT prz_cenaw CHECK (cena_wyjsc > 0),
-    opis        VARCHAR(150) NULL,
-    cena_zak    MONEY NULL,
-    wlasciciel  VARCHAR(32) CONSTRAINT prz_numer_obcy FOREIGN KEY REFERENCES U¿ytkownicy(login),
-    CONSTRAINT prz_cenaz CHECK (cena_zak >= cena_wyjsc)
+    id          INT IDENTITY(1,1) NOT NULL CONSTRAINT itm_id PRIMARY KEY,
+    name        VARCHAR(40) NOT NULL,
+    category    VARCHAR(30) NOT NULL,
+    entry_price MONEY NOT NULL CONSTRAINT item_entry_price_chk CHECK (entry_price > 0),
+    description VARCHAR(150) NULL,
+    exit_price  MONEY NULL,
+    owner       VARCHAR(32) CONSTRAINT item_owner_chk FOREIGN KEY REFERENCES Users(login),
+    CONSTRAINT item_exit_price_chk CHECK (exit_price >= entry_price)
 );
 
-CREATE TABLE Licytacje
+CREATE TABLE Auctions
 (
-    id          INT IDENTITY(10,1) NOT NULL CONSTRAINT lic_id PRIMARY KEY,
-    przedmiot   INT CONSTRAINT licz_prz FOREIGN KEY REFERENCES Przedmioty(numer),
-    data_rozp   DATE NOT NULL,
-    data_zakon  DATE,
-    status      VARCHAR(30) CONSTRAINT lic_status_pop CHECK (status in('w trakcie', 'zakoñczona kupnem', 'zakoñczona bez kupna')) DEFAULT 'w trakcie',
-    zwyciezca   VARCHAR(32) CONSTRAINT lic_winner NULL REFERENCES U¿ytkownicy(login),
+    id          INT IDENTITY(1,1) NOT NULL CONSTRAINT auc_id PRIMARY KEY,
+    item        INT CONSTRAINT auc_item_fk FOREIGN KEY REFERENCES Items(id),
+    start_date  DATE NOT NULL,
+    end_date    DATE,
+    status      VARCHAR(30) CONSTRAINT auc_status_check CHECK (status in('in progress', 'finished with buying', 'finished without buying')) DEFAULT 'in progress',
+    winner      VARCHAR(32) CONSTRAINT auc_winner_fk NULL REFERENCES Users(login),
 );
 
-CREATE TABLE Oferty
+CREATE TABLE Bids
 (
-    data_of             DATE NOT NULL,
-    godzina             TIME(0) NOT NULL,
-    kwota               MONEY NOT NULL,
-    numer_licytacji     INT CONSTRAINT of_lic REFERENCES Licytacje(id),
-    uzytkownik          VARCHAR(32) CONSTRAINT of_uz REFERENCES U¿ytkownicy(login),
-    CONSTRAINT of_key PRIMARY KEY (numer_licytacji, uzytkownik, data_of, godzina)
+    bid_date            DATE NOT NULL,
+    bid_hour            TIME(0) NOT NULL,
+    amount              MONEY NOT NULL,
+    auction_number      INT CONSTRAINT bid_auction_fk REFERENCES Auctions(id),
+    username            VARCHAR(32) CONSTRAINT bid_user_fk REFERENCES Users(login),
+    CONSTRAINT bid_primary_key PRIMARY KEY (auction_number, username, bid_date, bid_hour)
 );
 
-CREATE TABLE Dostawy
+CREATE TABLE Deliveries
 (
-    id          INT NOT NULL CONSTRAINT dos_key PRIMARY KEY,
-    nazwa       VARCHAR(30) NOT NULL,
-    firma       VARCHAR(30) NOT NULL,
-    cena        MONEY NOT NULL CONSTRAINT dos_cena CHECK (cena >= 0)
+    id              INT NOT NULL CONSTRAINT del_id PRIMARY KEY,
+    service_name    VARCHAR(30) NOT NULL,
+    company         VARCHAR(30) NOT NULL,
+    price           MONEY NOT NULL CONSTRAINT del_price_chk CHECK (price >= 0)
 );
 
-CREATE TABLE Posiadanie
+CREATE TABLE Possession
 (
-    przedmiot       INT NOT NULL CONSTRAINT pos_prz REFERENCES Przedmioty(numer),
-    numer_dostawy   INT NOT NULL CONSTRAINT pos_dos REFERENCES Dostawy(id),
-    CONSTRAINT posiadanie_key PRIMARY KEY(przedmiot, numer_dostawy)
+    item                INT NOT NULL CONSTRAINT own_item_fk REFERENCES Items(id),
+    delivery_number     INT NOT NULL CONSTRAINT own_delivery_fk REFERENCES Deliveries(id),
+    CONSTRAINT posiadanie_key PRIMARY KEY(item, delivery_number)
 );
 
 GO
---polecenia INSERT--
 
-INSERT INTO U¿ytkownicy VALUES
-('radtrz', 'Rados³aw', 'Trzmielewski', 'Morys³awice 5C', 'rarrrrr@gmail.com', null, 'Morys³awice 5C', '997886775'),
-('popa', 'Jan', 'Nowak', 'Mielno ul. Mickiewicza 5/23', 'polski_orzel@onet.com', null, null, '998867112'),
-('mak12', 'Maciej', 'B¹k', 'Poznañ ul. Norwida 19/14', 'maciejbaak@wp.com','47212110090000000235698741' , null, null),
-('krzysztof_kr', 'Krzysztof', 'Krowa', 'Sompolno ul. Poznañska 4', 'krzysztof_krowa@gmail.com',null , 'Poznañ ul. Rzymska 88', '654342978');
-INSERT INTO U¿ytkownicy VALUES
-('bananowy_marzyciel', 'Krystyna', 'Czóbuwna', 'Warszawa ul. Kotarskiego 39/4', 'czubuwienkaonet.pl,', null, null, '687419324');
+--insert commands--
 
+INSERT INTO Users (login, first_name, last_name, address, email, account_number, delivery_address, phone_number)
+VALUES
+('maryjane', 'Mary', 'Jane', '789 Pine St', 'maryjane@example.com', '11112222333344445555666677', '101 Chestnut Ave', '555666777'),
+('bobross', 'Bob', 'Ross', '321 Cedar St', 'bobross@example.com', '88889999000011112222333344', '202 Walnut Ave', '888999000'),
+('samwilson', 'Sam', 'Wilson', '456 Red St', 'samwilson@example.com', '33334444555566667777888899', '303 Elm St', '111222333'),
+('janedoe', 'Jane', 'Doe', '789 Green St', 'janedoe@example.com', '12341234123412341234123456', '404 Oak St', '444555666'),
+('tonystark', 'Tony', 'Stark', '123 Blue St', 'tonystark@example.com', '98769876987698769876987654', '505 Walnut St', '777888999'),
+('johndoe', 'John', 'Doe', '123 Main St', 'johndoe@example.com', '12345678901234567890123456', '456 Elm St', '123456789'),
+('alice_smith', 'Alice', 'Smith', '456 Oak St', 'alice_smith@example.com', '98765432109876543210987654', '789 Maple Ave', '987654321');
 
-INSERT INTO Przedmioty VALUES
-('drukarka', 'elektronika', '500', 'Mam na sprzedaz drukarke marki brother, wiecej szczegolow w wiadomosci priv', NULL, 'radtrz'),
-('kubek', 'porcelana', '25', 'Wlasnorecznie robiony kubek juz dzis w cenie 25 zlotych, zapraszam do licytacji', '80' , 'radtrz'),
-('kubek', 'porcelana', '25', 'Wlasnorecznie robiony kubek juz dzis w cenie 25 zlotych, zapraszam do licytacji', null , 'radtrz'),
-('pralka', 'sprzet AGD', '150', 'Pralka frania, chce sie jej jak najszybciej pozbyc bo zajmuje tylko miejsce, stan doskonaly', '250' , 'popa'),
-('dywan', 'Dom i Ogród', '120', null , null , 'mak12');
-INSERT INTO Przedmioty VALUES
-('taczka', 'Dom i Ogród', '50' , 'taczka na kó³ku', '25', 'krzysztof_kr');
+INSERT INTO Items (name, category, entry_price, description, exit_price, owner)
+VALUES
+('Smartphone', 'Electronics', 600, 'Latest model smartphone', 650, 'maryjane'),
+('Fishing Rod', 'Outdoor', 50, 'Carbon fiber fishing rod', 60, 'bobross'),
+('Digital Camera', 'Electronics', 400, 'Professional DSLR camera', 450, 'samwilson'),
+('Garden Hose', 'Garden', 20, '50ft heavy-duty garden hose', 25, 'janedoe'),
+('Sunglasses', 'Fashion', 50, 'Polarized sunglasses', 60, 'tonystark'),
+('Laptop', 'Electronics', 800, 'Brand new laptop', NULL, 'johndoe'),
+('Bicycle', 'Sports', 300, 'Mountain bike', 400, 'alice_smith'),
+('Bluetooth Speaker', 'Electronics', 100, 'Portable Bluetooth speaker', 120, 'samwilson'),
+('Running Shoes', 'Sport', 80, 'High-performance running shoes', 90, 'samwilson'),
+('Coffee Maker', 'Kitchen', 50, 'Drip coffee maker', 60, 'samwilson'),
+('Backpack', 'Outdoor', 40, 'Waterproof hiking backpack', 50, 'samwilson'),
+('Desk Lamp', 'Home', 30, 'Adjustable desk lamp', 35, 'samwilson');
 
-INSERT INTO Licytacje VALUES
-('1', '20-4-2020', '25-4-2020', 'zakoñczona bez kupna', null),
-('2', '20-4-2020', '22-4-2020', 'zakoñczona kupnem', 'popa'),
-('4', '4-6-2020', '29-6-2020', 'zakoñczona kupnem', 'krzysztof_kr'),
-('3', '28-11-2020', '17-12-2020', 'zakoñczona bez kupna', null),
-('5', '28-5-2021', null, 'w trakcie', null);
-INSERT INTO Licytacje VALUES
-('5', '28-5-2021', '25-4-2021', 'zakoñczona kupnem', 'radtrz');
+INSERT INTO Deliveries (id, service_name, company, price)
+VALUES
+(503, 'Next Day Delivery', 'SpeedyShip', 25),
+(504, 'Economy Delivery', 'BudgetShip', 5),
+(505, '2-Day Shipping', 'SwiftShip', 15),
+(506, 'Standard Ground Shipping', 'GroundShip', 8),
+(507, 'International Shipping', 'GlobalShip', 30),
+(501, 'Express Delivery', 'FastShip', 20),
+(502, 'Standard Delivery', 'SlowShip', 10);
 
-INSERT INTO Oferty VALUES
-('20-4-2020','16:00', '30', '11', 'mak12'),
-('21-4-2020','15:00', '45', '11', 'popa'),
-('22-4-2020','9:15:45', '67', '11', 'mak12'),
-('25-4-2020','5:00', '80', '11', 'popa'),
-('28-6-2020','16:00', '250', '12', 'krzysztof_kr');
-INSERT INTO Oferty VALUES
-('27-6-2020', '15:43', 'piêædziesi¹t trzy z³ote', '12', 'mak12');
-
-INSERT INTO Dostawy VALUES
-('101', 'paczkomat do 15 kg', 'POSTatP', '15'),
-('102', 'paczkomat powyzej 15 kg', 'POSTatP', '25'),
-('103', 'kurier przedp³ata', 'POSTatP', '10'),
-('201', 'kurier przedp³ata', 'MKD', '12'),
-('202', 'kurier pobranie', 'MKD', '15,99'),
-('203', 'odbiór osobisty', 'MKD', '0'),
-('301', 'odbiór osobisty', 'PaczKDP', '0');
-INSERT INTO Dostawy VALUES
-('401', 'paczkomat', 'PaczKDP', '-5');
-
-INSERT INTO Posiadanie VALUES
-('1', '101'),
-('1', '102'),
-('1', '103'),
-('1', '201'),
-('2', '202'),
-('2', '203'),
-('3', '301'),
-('4', '101'),
-('4', '102'),
-('4', '201'),
-('5', '301');
-INSERT INTO Posiadanie VALUES
-('5', '501');
+INSERT INTO Possession (item, delivery_number)
+VALUES
+(1, 501),
+(2, 502),
+(3, 503),
+(4, 504),
+(5, 505),
+(6, 506),
+(7, 507);
 
 
---polecenia SELECT--
+INSERT INTO Auctions (item, start_date, end_date, status, winner)
+VALUES
+(1, '2024-02-25', '2024-03-10', 'in progress', NULL),
+(2, '2024-03-01', '2024-03-15', 'finished without buying', NULL),
+(3, '2024-03-05', '2024-03-20', 'in progress', NULL),
+(4, '2024-03-10', '2024-03-25', 'in progress', NULL),
+(5, '2024-03-10', '2024-03-25', 'in progress', NULL),
+(6, '2024-03-15', '2024-03-30', 'in progress', NULL),
+(7, '2024-03-20', '2024-04-05', 'in progress', NULL),
+(8, '2024-03-25', '2024-04-10', 'finished with buying', 'tonystark'),
+(9, '2024-03-25', '2024-04-10', 'finished with buying', 'johndoe'),
+(10, '2024-03-30', '2024-04-15', 'finished without buying', NULL);
 
-SELECT * FROM U¿ytkownicy;
-SELECT * FROM Przedmioty;
-SELECT * FROM Licytacje;
-SELECT * FROM Oferty;
-SELECT * FROM Dostawy;
-SELECT * FROM Posiadanie;
+INSERT INTO Bids (bid_date, bid_hour, amount, auction_number, username)
+VALUES
+('2024-02-27', '12:00:00', 850, 1, 'johndoe'),
+('2024-03-05', '14:30:00', 320, 3, 'alice_smith'),
+('2024-03-08', '10:00:00', 700, 3, 'bobross'),
+('2024-03-15', '16:45:00', 55, 4, 'maryjane'),
+('2024-03-12', '11:30:00', 420, 5, 'janedoe'),
+('2024-03-18', '14:15:00', 30, 6, 'samwilson'),
+('2024-03-22', '09:00:00', 65, 7, 'tonystark');
+
+--select commands--
+
+SELECT * FROM Users;
+SELECT * FROM Items;
+SELECT * FROM Auctions;
+SELECT * FROM Bids;
+SELECT * FROM Deliveries;
+SELECT * FROM Possession;
 
 -------------------
