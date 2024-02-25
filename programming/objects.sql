@@ -1,17 +1,23 @@
---english lang--
+USE AuctionSystem;
 
+--english lang--
 SET LANGUAGE 'english'
 
 ---drop commands---
 DROP FUNCTION IF EXISTS udf_items_of_selected_user;
 DROP FUNCTION IF EXISTS udf_delivery_options_for_selected_item;
 DROP VIEW IF EXISTS Offers_with_numeration;
+DROP VIEW IF EXISTS Total_bids_per_auction;
 
 DROP PROCEDURE IF EXISTS usp_new_user;
 DROP PROCEDURE IF EXISTS usp_new_user_extended;
 DROP PROCEDURE IF EXISTS usp_auction_item;
 DROP PROCEDURE IF EXISTS usp_add_bid;
 DROP PROCEDURE IF EXISTS usp_finish_auction;
+
+DROP TRIGGER IF EXISTS tgr_prevent_lower_bid;
+DROP TRIGGER IF EXISTS tgr_prevent_bids_after_finished;
+DROP TRIGGER IF EXISTS tgr_prevent_auction_if_bought;
 
 GO
 
@@ -196,4 +202,88 @@ AS
     username
     FROM Bids
 );
+GO
+
+CREATE VIEW Total_bids_per_auction
+AS
+(
+	SELECT  auction_number,
+			COUNT(*) AS total_bids
+	FROM Bids
+	GROUP BY auction_number
+);
+GO
+
+--triggers--
+
+CREATE OR ALTER TRIGGER tgr_prevent_lower_bid
+ON Bids
+AFTER INSERT
+AS
+BEGIN
+	DECLARE @new_bid MONEY;
+	DECLARE @auction_id INT;
+
+	SELECT @new_bid = amount, @auction_id = auction_number
+	FROM inserted;
+
+	DECLARE @current_highest_bid MONEY;
+	SELECT @current_highest_bid = MAX(amount)
+	FROM Bids
+	WHERE auction_number = @auction_id
+
+	IF @new_bid < @current_highest_bid
+	BEGIN
+		RAISERROR('New bid amount must be higher than the current highest bid', 16,1)
+		ROLLBACK TRANSACTION;
+	END;
+END;
+GO
+
+CREATE OR ALTER TRIGGER tgr_prevent_bids_after_finished
+ON Bids
+INSTEAD OF INSERT
+AS
+BEGIN
+    DECLARE @auction_id INT;
+
+    SELECT @auction_id = auction_number
+    FROM inserted;
+
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM Auctions 
+        WHERE id = @auction_id 
+        AND (status = 'in progress' OR status IS NULL)
+    )
+    BEGIN
+        RAISERROR('Bidding is not allowed for finished auctions', 16, 1);
+        RETURN;
+    END;
+
+    INSERT INTO Bids
+    SELECT * FROM inserted;
+END;
+GO
+
+CREATE OR ALTER TRIGGER tgr_prevent_auction_if_bought
+ON Auctions
+INSTEAD OF INSERT
+AS
+BEGIN
+    DECLARE @item_id INT;
+
+    SELECT @item_id = item
+    FROM inserted;
+
+    IF EXISTS (SELECT 1 FROM Items WHERE id = @item_id AND exit_price IS NOT NULL)
+    BEGIN
+        RAISERROR('The item has already been bought and cannot be auctioned.', 16, 1);
+    END
+    ELSE
+    BEGIN
+        INSERT INTO Auctions
+        SELECT * FROM inserted;
+    END;
+END;
 GO
